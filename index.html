@@ -315,13 +315,13 @@
   </header>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('chat')">💬 フリーチャット</div>
-    <div class="tab" onclick="switchTab('category')">📂 カテゴリ</div>
+    <div class="tab" onclick="switchTab('chat')">💬 フリーチャット</div>
+    <div class="tab active" onclick="switchTab('category')">📂 カテゴリ</div>
     <div class="tab" onclick="switchTab('docs')">📄 資料を見る</div>
   </div>
 
   <!-- フリーチャット -->
-  <div class="tab-content active" id="tab-chat">
+  <div class="tab-content" id="tab-chat">
     <div class="chat-messages" id="chat-messages">
       <div class="msg bot">
         <div class="avatar">🤖</div>
@@ -349,7 +349,7 @@
   </div>
 
   <!-- カテゴリから探す -->
-  <div class="tab-content" id="tab-category">
+  <div class="tab-content active" id="tab-category">
     <div class="category-view">
       <div class="category-grid" id="category-grid">
         <!-- 動的生成 -->
