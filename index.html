@@ -283,6 +283,16 @@
   }
 
   .thinking { color: #6b7280; font-style: italic; }
+
+  /* NGワードエラー */
+  #ng-word-error {
+    display: none;
+    background: #fff7ed;
+    border-top: 1px solid #fed7aa;
+    color: #c2410c;
+    font-size: 15px;
+    padding: 8px 16px;
+  }
 </style>
 </head>
 <body>
@@ -329,6 +339,8 @@
       </div>
     </div>
 
+    <div id="ng-word-error">⚠️ 人名は入力しないでください（個人情報保護のため）</div>
+
     <div class="chat-input-area">
       <textarea id="chat-input" placeholder="質問を入力してください…" rows="1"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
@@ -363,6 +375,7 @@
 const GEMINI_API_KEY  = "__GEMINI_API_KEY__";
 const GEMINI_MODEL    = "gemini-2.5-flash-lite";
 const ACCESS_PASSWORD = "__ACCESS_PASSWORD__";
+const NG_WORDS        = "__NG_WORDS__".split(",").filter(Boolean);
 // =============================================================
 
 let docsData = { chunks: [] };
@@ -402,6 +415,25 @@ async function loadDocs() {
   buildCategoryUI();
   buildDocListUI();
 }
+
+// ---------- NGワードチェック ----------
+function containsNgWord(text) {
+  return NG_WORDS.some(w => text.includes(w));
+}
+
+function maskNgWords(text) {
+  let result = text;
+  for (const w of NG_WORDS) result = result.replaceAll(w, '****');
+  return result;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('chat-input').addEventListener('input', function () {
+    const hasNg = containsNgWord(this.value);
+    document.getElementById('send-btn').disabled = hasNg;
+    document.getElementById('ng-word-error').style.display = hasNg ? 'block' : 'none';
+  });
+});
 
 // ---------- タブ切り替え ----------
 function switchTab(name) {
@@ -470,6 +502,7 @@ async function sendMessage() {
   const input = document.getElementById('chat-input');
   const question = input.value.trim();
   if (!question) return;
+  if (containsNgWord(question)) return;
 
   hideError();
   lastQuestion = question;
@@ -485,7 +518,7 @@ async function sendMessage() {
   lastChunks = getTopChunks(question);
 
   try {
-    const answer = await callGemini(question, lastChunks);
+    const answer = maskNgWords(await callGemini(question, lastChunks));
     updateMsg(thinkingId, answer, lastChunks);
   } catch (e) {
     removeMsg(thinkingId);
@@ -504,7 +537,7 @@ async function retryLastMessage() {
   const thinkingId = appendMsg('bot', '<span class="thinking">再試行中…</span>');
 
   try {
-    const answer = await callGemini(lastQuestion, lastChunks);
+    const answer = maskNgWords(await callGemini(lastQuestion, lastChunks));
     updateMsg(thinkingId, answer, lastChunks);
   } catch (e) {
     removeMsg(thinkingId);

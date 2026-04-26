@@ -26,6 +26,7 @@ jobs:
         run: |
           sed -i "s/__GEMINI_API_KEY__/${{ secrets.GEMINI_API_KEY }}/g" index.html
           sed -i "s/__ACCESS_PASSWORD__/${{ secrets.ACCESS_PASSWORD }}/g" index.html
+          sed -i "s/__NG_WORDS__/${{ secrets.NG_WORDS }}/g" index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
