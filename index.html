@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>手術資料チャット</title>
+<title>手術資料検索サイト</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -238,39 +238,73 @@
     padding: 16px;
   }
   .cat-results h3 { font-size: 18px; color: #1e3a5f; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
-  .result-item {
-    padding: 14px 0;
-    border-bottom: 1px solid #f3f4f6;
+
+  /* カテゴリ — アコーディオン */
+  .acc-item { border-bottom: 1px solid #f3f4f6; }
+  .acc-item:last-child { border-bottom: none; }
+  .acc-header {
+    padding: 14px 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    font-weight: 500;
+    color: #1e3a5f;
+    gap: 8px;
+  }
+  .acc-header .chevron { font-size: 14px; color: #9ca3af; transition: transform 0.2s; flex-shrink: 0; }
+  .acc-header.open .chevron { transform: rotate(90deg); }
+  .acc-body {
+    display: none;
+    padding: 0 4px 14px 4px;
     font-size: 17px;
     line-height: 1.7;
+    color: #374151;
   }
-  .result-item:last-child { border-bottom: none; }
-  .result-source { font-size: 13px; color: #9ca3af; margin-top: 4px; }
+  .acc-body.open { display: block; }
+  .result-source { font-size: 13px; color: #9ca3af; margin-top: 6px; }
 
   /* ===== 資料ビューア ===== */
   .doc-view { flex: 1; overflow-y: auto; padding: 16px; }
   .doc-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-  .doc-item {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
+
+  /* グループヘッダー */
+  .doc-group { background: white; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+  .doc-group-header {
     padding: 16px;
     cursor: pointer;
     font-size: 17px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #1e3a5f;
+  }
+  .doc-group-header:hover { background: #f0f7ff; }
+  .doc-group-header .arrow { color: #9ca3af; transition: transform 0.2s; }
+  .doc-group-header.open .arrow { transform: rotate(90deg); }
+  .doc-group-body { display: none; border-top: 1px solid #e2e8f0; }
+  .doc-group-body.open { display: block; }
+  .doc-sub-item {
+    padding: 13px 16px 13px 28px;
+    cursor: pointer;
+    font-size: 16px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #374151;
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
-  .doc-item:hover { background: #f0f7ff; border-color: #93c5fd; }
-  .doc-item .arrow { color: #9ca3af; }
+  .doc-sub-item:last-child { border-bottom: none; }
+  .doc-sub-item:hover { background: #f9fafb; }
+  .doc-sub-item .arrow { color: #d1d5db; font-size: 14px; }
+
   .doc-text {
     background: white;
     border-radius: 10px;
     border: 1px solid #e2e8f0;
     padding: 16px;
-    font-size: 17px;
-    line-height: 1.9;
-    white-space: pre-wrap;
     display: none;
   }
 
@@ -300,7 +334,7 @@
 <!-- パスワード画面 -->
 <div id="password-screen">
   <div style="font-size:36px">🏥</div>
-  <h1>手術資料チャット</h1>
+  <h1>手術資料検索サイト</h1>
   <p>パスワードを入力してください</p>
   <input type="password" id="pw-input" placeholder="••••••" />
   <div id="password-error">パスワードが違います</div>
@@ -310,7 +344,7 @@
 <!-- メイン画面 -->
 <div id="main-screen">
   <header>
-    🏥 手術資料チャット
+    🏥 手術資料検索サイト
     <span>gemini-2.5-flash-lite</span>
   </header>
 
@@ -661,42 +695,85 @@ function selectCategory(btn, cat) {
   const resultsEl = document.getElementById('cat-results');
 
   titleEl.textContent = `${CAT_ICONS[cat] ?? '📄'} ${cat}`;
-  bodyEl.innerHTML = chunks.length
-    ? chunks.map(c =>
-        `<div class="result-item">${escapeHtml(c.text)}<div class="result-source">📄 ${escapeHtml(c.source)}</div></div>`
-      ).join('')
-    : '<div class="result-item">該当する資料がありません。</div>';
+  if (chunks.length === 0) {
+    bodyEl.innerHTML = '<div style="padding:14px 4px;color:#9ca3af">該当する資料がありません。</div>';
+  } else {
+    bodyEl.innerHTML = chunks.map((c, i) => `
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span>📄 ${escapeHtml(c.source.replace(/^.*? — /, ''))}</span>
+          <span class="chevron">›</span>
+        </div>
+        <div class="acc-body">
+          ${escapeHtml(c.text).replace(/\n/g, '<br>')}
+          <div class="result-source">📄 ${escapeHtml(c.source)}</div>
+        </div>
+      </div>`).join('');
+  }
   resultsEl.style.display = 'block';
 }
 
+function toggleAcc(header) {
+  header.classList.toggle('open');
+  header.nextElementSibling.classList.toggle('open');
+}
+
 // ---------- 資料ビューアUI ----------
+const DOC_GROUPS = [
+  { label: '📋 クリニカルパス（手術前後の流れ）', filter: c => c.source.startsWith('クリニカルパス') },
+  { label: '🧳 入院手続き・持ち物・病室',         filter: c => ['入院のしおり — 入院手続き（歯科）','入院のしおり — 入院時の持ち物','入院のしおり — 持込禁止品','入院のしおり — 宅配での荷物送付方法','入院のしおり — 入院生活の1日のスケジュール','入院のしおり — 病室の種類と料金','入院のしおり — 寝衣・タオルのレンタル','入院のしおり — モバイルWi-Fiレンタル'].includes(c.source) },
+  { label: '🍽 食事・生活ルール',                  filter: c => ['入院のしおり — 入院中の食事について','入院のしおり — 選べるメニューサービス','クリニカルパス — 術後の食事制限と段階的移行','入院のしおり — 入院中の生活ルール'].includes(c.source) },
+  { label: '💴 費用・支払い・保険',                filter: c => ['入院のしおり — 入院費の支払い方法（歯科）','入院のしおり — 高額療養費・限度額適用認定証'].includes(c.source) },
+  { label: '👥 面会・退院・施設',                  filter: c => ['入院のしおり — 面会のルールと手順','入院のしおり — 退院手続き','入院のしおり — 院内施設一覧','入院のしおり — 相談窓口'].includes(c.source) },
+  { label: '📌 その他（規則・工事など）',           filter: c => ['入院のしおり — 病棟改修工事のお知らせ（2026年）','入院のしおり — お肌の保湿について','入院のしおり — 入院中の規則・注意事項'].includes(c.source) },
+];
+
 function buildDocListUI() {
-  const sources = [...new Set(docsData.chunks.map(c => c.source.replace(/ p\.\d+$/, '')))];
-  const listEl  = document.getElementById('doc-list');
+  const listEl = document.getElementById('doc-list');
   listEl.innerHTML = '';
 
-  if (sources.length === 0) {
+  if (docsData.chunks.length === 0) {
     listEl.innerHTML = '<div class="empty-state">資料がまだ追加されていません。</div>';
     return;
   }
 
-  for (const src of sources) {
-    const item = document.createElement('div');
-    item.className = 'doc-item';
-    item.innerHTML = `📋 ${escapeHtml(src)} <span class="arrow">›</span>`;
-    item.onclick = () => showDoc(src);
-    listEl.appendChild(item);
-  }
+  DOC_GROUPS.forEach(group => {
+    const chunks = docsData.chunks.filter(group.filter);
+    if (chunks.length === 0) return;
+    const groupEl = document.createElement('div');
+    groupEl.className = 'doc-group';
+    groupEl.innerHTML = `
+      <div class="doc-group-header" onclick="toggleDocGroup(this)">
+        <span>${escapeHtml(group.label)}</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="doc-group-body">
+        ${chunks.map(c => `
+          <div class="doc-sub-item" onclick="showDoc(${JSON.stringify(c.source)})">
+            <span>${escapeHtml(c.source.replace(/^.*? — /, ''))}</span>
+            <span class="arrow">›</span>
+          </div>`).join('')}
+      </div>`;
+    listEl.appendChild(groupEl);
+  });
+}
+
+function toggleDocGroup(header) {
+  header.classList.toggle('open');
+  header.nextElementSibling.classList.toggle('open');
 }
 
 function showDoc(sourceName) {
-  const chunks = docsData.chunks.filter(c => c.source.startsWith(sourceName));
-  const text = chunks.map(c => `【${c.source}】\n${c.text}`).join('\n\n');
+  const chunk = docsData.chunks.find(c => c.source === sourceName);
+  if (!chunk) return;
 
   document.getElementById('doc-list').style.display = 'none';
   const el = document.getElementById('doc-text');
   el.style.display = 'block';
-  el.innerHTML = `<button onclick="backToDocs()" style="margin-bottom:12px;padding:8px 16px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:16px;">← 戻る</button>\n\n${escapeHtml(text)}`;
+  el.innerHTML = `
+    <button onclick="backToDocs()" style="margin-bottom:16px;padding:8px 16px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:16px;">← 戻る</button>
+    <h3 style="font-size:18px;color:#1e3a5f;margin-bottom:12px;line-height:1.4">${escapeHtml(chunk.source)}</h3>
+    <div style="font-size:17px;line-height:1.9;white-space:pre-wrap">${escapeHtml(chunk.text)}</div>`;
 }
 
 function backToDocs() {
