@@ -515,7 +515,7 @@ async function sendMessage() {
 
   const thinkingId = appendMsg('bot', '<span class="thinking">考え中…</span>');
 
-  lastChunks = getTopChunks(question);
+  lastChunks = docsData.chunks;
 
   try {
     const answer = maskNgWords(await callGemini(question, lastChunks));
