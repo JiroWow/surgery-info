@@ -349,9 +349,9 @@
   </header>
 
   <div class="tabs">
-    <div class="tab" onclick="switchTab('chat')">💬 フリーチャット</div>
     <div class="tab active" onclick="switchTab('category')">📂 カテゴリ</div>
     <div class="tab" onclick="switchTab('docs')">📄 資料を見る</div>
+    <div class="tab" onclick="switchTab('chat')">💬 フリーチャット</div>
   </div>
 
   <!-- フリーチャット -->
@@ -660,6 +660,15 @@ function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function formatText(text) {
+  return escapeHtml(text)
+    .replace(/【([^】]+)】/g, '<br><strong>【$1】</strong>')
+    .replace(/([。])\s*(?=[^\s])/g, '$1<br>')
+    .replace(/(^|<br>)(・[^<]+)/g, '$1<span style="display:inline-block;padding-left:1em;text-indent:-1em">$2</span>')
+    .replace(/(^|<br>)([①②③④⑤⑥⑦⑧⑨⑩])/g, '$1<br>$2')
+    .replace(/^<br>/, '');
+}
+
 // ---------- カテゴリUI ----------
 const CAT_ICONS = {
   '術前準備': '📋', '手術当日': '🏥', '食事制限': '🍽',
@@ -705,7 +714,7 @@ function selectCategory(btn, cat) {
           <span class="chevron">›</span>
         </div>
         <div class="acc-body">
-          ${escapeHtml(c.text).replace(/\n/g, '<br>')}
+          ${formatText(c.text)}
           <div class="result-source">📄 ${escapeHtml(c.source)}</div>
         </div>
       </div>`).join('');
@@ -749,12 +758,16 @@ function buildDocListUI() {
       </div>
       <div class="doc-group-body">
         ${chunks.map(c => `
-          <div class="doc-sub-item" onclick="showDoc(${JSON.stringify(c.source)})">
+          <div class="doc-sub-item" data-source="${escapeHtml(c.source)}">
             <span>${escapeHtml(c.source.replace(/^.*? — /, ''))}</span>
             <span class="arrow">›</span>
           </div>`).join('')}
       </div>`;
     listEl.appendChild(groupEl);
+  });
+
+  listEl.querySelectorAll('.doc-sub-item').forEach(el => {
+    el.addEventListener('click', () => showDoc(el.dataset.source));
   });
 }
 
@@ -773,7 +786,7 @@ function showDoc(sourceName) {
   el.innerHTML = `
     <button onclick="backToDocs()" style="margin-bottom:16px;padding:8px 16px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:16px;">← 戻る</button>
     <h3 style="font-size:18px;color:#1e3a5f;margin-bottom:12px;line-height:1.4">${escapeHtml(chunk.source)}</h3>
-    <div style="font-size:17px;line-height:1.9;white-space:pre-wrap">${escapeHtml(chunk.text)}</div>`;
+    <div style="font-size:17px;line-height:1.9">${formatText(chunk.text)}</div>`;
 }
 
 function backToDocs() {
