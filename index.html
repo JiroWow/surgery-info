@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>手術資料チャット</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Hiragino Sans", "Meiryo", sans-serif;
+    font-size: 18px;
+    background: #f5f5f5;
+    color: #222;
+  }
+
+  /* ===== パスワード画面 ===== */
+  #password-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #fff;
+    gap: 20px;
+    padding: 30px;
+  }
+  #password-screen h1 { font-size: 22px; color: #333; }
+  #password-screen p { color: #666; font-size: 16px; }
+  #password-screen input {
+    font-size: 20px;
+    padding: 14px 20px;
+    border: 2px solid #bbb;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    letter-spacing: 4px;
+  }
+  #password-screen button {
+    font-size: 20px;
+    padding: 14px 40px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+  }
+  #password-error {
+    color: #dc2626;
+    font-size: 16px;
+    display: none;
+  }
+
+  /* ===== メイン画面 ===== */
+  #main-screen { display: none; flex-direction: column; height: 100vh; }
+
+  header {
+    background: #1e3a5f;
+    color: white;
+    padding: 16px 20px;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  header span { font-size: 14px; background: #ffffff30; padding: 2px 8px; border-radius: 4px; }
+
+  /* タブ */
+  .tabs {
+    display: flex;
+    background: #e8edf4;
+    border-bottom: 2px solid #c0cfe0;
+  }
+  .tab {
+    flex: 1;
+    padding: 14px 8px;
+    font-size: 16px;
+    text-align: center;
+    cursor: pointer;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: white;
+    color: #1e3a5f;
+    font-weight: bold;
+    border-bottom: 3px solid #2563eb;
+  }
+
+  /* タブコンテンツ */
+  .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+  .tab-content.active { display: flex; }
+
+  /* ===== フリーチャット ===== */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: #f9fafb;
+  }
+
+  .msg { display: flex; gap: 10px; max-width: 88%; }
+  .msg.bot { align-self: flex-start; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .msg.bot .avatar { background: #dbeafe; }
+  .msg.user .avatar { background: #dcfce7; }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  .msg.bot .bubble { background: white; border: 1px solid #e2e8f0; border-top-left-radius: 2px; }
+  .msg.user .bubble { background: #2563eb; color: white; border-top-right-radius: 2px; }
+
+  .source-tag {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 6px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .source-tag span {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+
+  .chat-input-area {
+    padding: 12px 16px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .chat-input-area textarea {
+    flex: 1;
+    font-size: 17px;
+    padding: 12px 14px;
+    border: 2px solid #d1d5db;
+    border-radius: 10px;
+    resize: none;
+    height: 54px;
+    font-family: inherit;
+  }
+  .chat-input-area textarea:focus { outline: none; border-color: #2563eb; }
+  .send-btn {
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0 20px;
+    height: 54px;
+    font-size: 17px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .send-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+  /* エラーバナー */
+  .error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 14px 16px;
+    font-size: 16px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .error-banner.visible { display: flex; }
+  .error-banner button {
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 15px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* ===== カテゴリ ===== */
+  .category-view { flex: 1; overflow-y: auto; padding: 16px; }
+  .category-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .cat-btn {
+    background: white;
+    border: 2px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 20px 12px;
+    font-size: 18px;
+    cursor: pointer;
+    text-align: center;
+    color: #1e3a5f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .cat-btn:hover, .cat-btn.selected {
+    background: #eff6ff;
+    border-color: #2563eb;
+    font-weight: bold;
+  }
+  .cat-btn .icon { font-size: 28px; }
+
+  .cat-results {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+  }
+  .cat-results h3 { font-size: 18px; color: #1e3a5f; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
+  .result-item {
+    padding: 14px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-source { font-size: 13px; color: #9ca3af; margin-top: 4px; }
+
+  /* ===== 資料ビューア ===== */
+  .doc-view { flex: 1; overflow-y: auto; padding: 16px; }
+  .doc-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .doc-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .doc-item:hover { background: #f0f7ff; border-color: #93c5fd; }
+  .doc-item .arrow { color: #9ca3af; }
+  .doc-text {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+    font-size: 17px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    display: none;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #9ca3af;
+    padding: 40px 20px;
+    font-size: 16px;
+    line-height: 2;
+  }
+
+  .thinking { color: #6b7280; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- パスワード画面 -->
+<div id="password-screen">
+  <div style="font-size:36px">🏥</div>
+  <h1>手術資料チャット</h1>
+  <p>パスワードを入力してください</p>
+  <input type="password" id="pw-input" placeholder="••••••" />
+  <div id="password-error">パスワードが違います</div>
+  <button onclick="checkPassword()">ログイン</button>
+</div>
+
+<!-- メイン画面 -->
+<div id="main-screen">
+  <header>
+    🏥 手術資料チャット
+    <span>gemini-2.5-flash-lite</span>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('chat')">💬 フリーチャット</div>
+    <div class="tab" onclick="switchTab('category')">📂 カテゴリ</div>
+    <div class="tab" onclick="switchTab('docs')">📄 資料を見る</div>
+  </div>
+
+  <!-- フリーチャット -->
+  <div class="tab-content active" id="tab-chat">
+    <div class="chat-messages" id="chat-messages">
+      <div class="msg bot">
+        <div class="avatar">🤖</div>
+        <div>
+          <div class="bubble">こんにちは！手術や入院に関することを何でも聞いてください。資料に書いてあることをもとにお答えします。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-banner" id="error-banner">
+      <span id="error-text">エラーが発生しました</span>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button id="retry-btn" onclick="retryLastMessage()">再試行</button>
+        <button onclick="switchTab('category');hideError()">カテゴリへ</button>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <textarea id="chat-input" placeholder="質問を入力してください…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">送信</button>
+    </div>
+  </div>
+
+  <!-- カテゴリから探す -->
+  <div class="tab-content" id="tab-category">
+    <div class="category-view">
+      <div class="category-grid" id="category-grid">
+        <!-- 動的生成 -->
+      </div>
+      <div class="cat-results" id="cat-results" style="display:none">
+        <h3 id="cat-results-title"></h3>
+        <div id="cat-results-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 資料を見る -->
+  <div class="tab-content" id="tab-docs">
+    <div class="doc-view">
+      <div class="doc-list" id="doc-list"></div>
+      <div class="doc-text" id="doc-text"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 設定（リポジトリがPrivateなので直書きOK） ==========
+const GEMINI_API_KEY  = "YOUR_GEMINI_API_KEY";   // ← Google AI Studioで取得したキーに書き換え
+const GEMINI_MODEL    = "gemini-2.5-flash-lite";
+const ACCESS_PASSWORD = "YOUR_PASSWORD";          // ← 任意のパスワードに書き換え
+// =============================================================
+
+let docsData = { chunks: [] };
+let lastQuestion = "";
+let lastChunks   = [];
+
+// ---------- パスワード ----------
+function checkPassword() {
+  const val = document.getElementById('pw-input').value;
+  if (val === ACCESS_PASSWORD) {
+    sessionStorage.setItem('auth', '1');
+    document.getElementById('password-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'flex';
+    loadDocs();
+  } else {
+    document.getElementById('password-error').style.display = 'block';
+  }
+}
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+
+if (sessionStorage.getItem('auth') === '1') {
+  document.getElementById('password-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'flex';
+  loadDocs();
+}
+
+// ---------- データ読み込み ----------
+async function loadDocs() {
+  try {
+    const res = await fetch('documents.json');
+    docsData = await res.json();
+  } catch {
+    docsData = { chunks: [] };
+  }
+  buildCategoryUI();
+  buildDocListUI();
+}
+
+// ---------- タブ切り替え ----------
+function switchTab(name) {
+  const names = ['chat', 'category', 'docs'];
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.tab-content').forEach((c, i) =>
+    c.classList.toggle('active', ['tab-chat','tab-category','tab-docs'][i] === 'tab-' + name));
+}
+
+// ---------- キーワードスコアリング ----------
+function scoreChunk(chunk, query) {
+  const tokens = query.toLowerCase().replace(/[。、？！\s]+/g, ' ').split(' ').filter(Boolean);
+  const text = chunk.text.toLowerCase();
+  let score = 0;
+  for (const t of tokens) {
+    if (t.length < 2) continue;
+    const count = (text.match(new RegExp(t, 'g')) || []).length;
+    score += count * (1 + 1 / (t.length));
+  }
+  return score;
+}
+
+function getTopChunks(query, n = 3) {
+  return docsData.chunks
+    .map(c => ({ ...c, score: scoreChunk(c, query) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .filter(c => c.score > 0);
+}
+
+// ---------- Gemini API呼び出し ----------
+async function callGemini(question, chunks) {
+  const context = chunks.length
+    ? chunks.map((c, i) => `【参考資料${i + 1}（${c.source}）】\n${c.text}`).join('\n\n')
+    : '（参考資料なし）';
+
+  const prompt = `あなたは顎矯正手術に関する質問に答えるアシスタントです。
+以下の病院資料のみを根拠に、わかりやすく回答してください。
+資料に記載がない場合は「資料に記載がありません」と答えてください。
+
+${context}
+
+【質問】
+${question}`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(err?.error?.message || res.statusText), { status: res.status, body: err });
+  }
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '（応答が空でした）';
+}
+
+// ---------- メッセージ送信 ----------
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  hideError();
+  lastQuestion = question;
+  input.value = '';
+
+  appendMsg('user', question);
+
+  const sendBtn = document.getElementById('send-btn');
+  sendBtn.disabled = true;
+
+  const thinkingId = appendMsg('bot', '<span class="thinking">考え中…</span>');
+
+  lastChunks = getTopChunks(question);
+
+  try {
+    const answer = await callGemini(question, lastChunks);
+    updateMsg(thinkingId, answer, lastChunks);
+  } catch (e) {
+    removeMsg(thinkingId);
+    handleError(e);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+async function retryLastMessage() {
+  if (!lastQuestion) return;
+  hideError();
+
+  const sendBtn = document.getElementById('send-btn');
+  sendBtn.disabled = true;
+  const thinkingId = appendMsg('bot', '<span class="thinking">再試行中…</span>');
+
+  try {
+    const answer = await callGemini(lastQuestion, lastChunks);
+    updateMsg(thinkingId, answer, lastChunks);
+  } catch (e) {
+    removeMsg(thinkingId);
+    handleError(e);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+// ---------- エラーハンドリング ----------
+function handleError(e) {
+  const status = e.status;
+  let msg = '';
+  let showRetry = true;
+
+  if (!status) {
+    msg = '⚠️ インターネット接続を確認してください。';
+    showRetry = false;
+  } else if (status === 429) {
+    const isDaily = e.body?.error?.message?.toLowerCase().includes('quota') ||
+                    e.body?.error?.message?.toLowerCase().includes('day');
+    if (isDaily) {
+      msg = '⚠️ 本日の利用上限に達しました。明日またお試しください。';
+      showRetry = false;
+    } else {
+      msg = '⚠️ 短時間に連続送信されました。少し待ってから再送してください。';
+      setTimeout(retryLastMessage, 3000);
+    }
+  } else if (status === 401 || status === 403) {
+    msg = '⚠️ APIキーを確認してください（index.html の GEMINI_API_KEY）。';
+    showRetry = false;
+  } else if (status >= 500) {
+    msg = '⚠️ Geminiサービスが一時的に利用できません。';
+  } else {
+    msg = `⚠️ エラーが発生しました（${status}）。`;
+  }
+
+  showError(msg, showRetry);
+}
+
+function showError(msg, showRetry = true) {
+  document.getElementById('error-text').textContent = msg;
+  document.getElementById('retry-btn').style.display = showRetry ? 'inline-block' : 'none';
+  document.getElementById('error-banner').classList.add('visible');
+}
+function hideError() {
+  document.getElementById('error-banner').classList.remove('visible');
+}
+
+// ---------- チャットDOM操作 ----------
+let msgCounter = 0;
+function appendMsg(type, htmlContent) {
+  const id = 'msg-' + (++msgCounter);
+  const el = document.createElement('div');
+  el.className = `msg ${type}`;
+  el.id = id;
+  if (type === 'bot') {
+    el.innerHTML = `<div class="avatar">🤖</div><div><div class="bubble">${htmlContent}</div></div>`;
+  } else {
+    el.innerHTML = `<div class="avatar">👤</div><div class="bubble">${escapeHtml(htmlContent)}</div>`;
+  }
+  const container = document.getElementById('chat-messages');
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function updateMsg(id, text, chunks) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let sourcesHtml = '';
+  if (chunks && chunks.length) {
+    sourcesHtml = '<div class="source-tag">📄 参照元: ' +
+      chunks.map(c => `<span>${escapeHtml(c.source)}</span>`).join('') + '</div>';
+  }
+  el.querySelector('.bubble').innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+  el.querySelector('div:last-child').insertAdjacentHTML('beforeend', sourcesHtml);
+  document.getElementById('chat-messages').scrollTop = 99999;
+}
+
+function removeMsg(id) {
+  document.getElementById(id)?.remove();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---------- カテゴリUI ----------
+const CAT_ICONS = {
+  '術前準備': '📋', '手術当日': '🏥', '食事制限': '🍽',
+  '入院準備': '🧳', '退院後': '🏠', 'その他': '❓'
+};
+
+function buildCategoryUI() {
+  const cats = [...new Set(docsData.chunks.flatMap(c => c.categories || []))];
+  const grid = document.getElementById('category-grid');
+  grid.innerHTML = '';
+
+  if (cats.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">資料がまだ追加されていません。</div>';
+    return;
+  }
+
+  for (const cat of cats) {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.innerHTML = `<span class="icon">${CAT_ICONS[cat] ?? '📄'}</span>${escapeHtml(cat)}`;
+    btn.onclick = () => selectCategory(btn, cat);
+    grid.appendChild(btn);
+  }
+}
+
+function selectCategory(btn, cat) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  const chunks = docsData.chunks.filter(c => c.categories?.includes(cat));
+  const titleEl = document.getElementById('cat-results-title');
+  const bodyEl  = document.getElementById('cat-results-body');
+  const resultsEl = document.getElementById('cat-results');
+
+  titleEl.textContent = `${CAT_ICONS[cat] ?? '📄'} ${cat}`;
+  bodyEl.innerHTML = chunks.length
+    ? chunks.map(c =>
+        `<div class="result-item">${escapeHtml(c.text)}<div class="result-source">📄 ${escapeHtml(c.source)}</div></div>`
+      ).join('')
+    : '<div class="result-item">該当する資料がありません。</div>';
+  resultsEl.style.display = 'block';
+}
+
+// ---------- 資料ビューアUI ----------
+function buildDocListUI() {
+  const sources = [...new Set(docsData.chunks.map(c => c.source.replace(/ p\.\d+$/, '')))];
+  const listEl  = document.getElementById('doc-list');
+  listEl.innerHTML = '';
+
+  if (sources.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">資料がまだ追加されていません。</div>';
+    return;
+  }
+
+  for (const src of sources) {
+    const item = document.createElement('div');
+    item.className = 'doc-item';
+    item.innerHTML = `📋 ${escapeHtml(src)} <span class="arrow">›</span>`;
+    item.onclick = () => showDoc(src);
+    listEl.appendChild(item);
+  }
+}
+
+function showDoc(sourceName) {
+  const chunks = docsData.chunks.filter(c => c.source.startsWith(sourceName));
+  const text = chunks.map(c => `【${c.source}】\n${c.text}`).join('\n\n');
+
+  document.getElementById('doc-list').style.display = 'none';
+  const el = document.getElementById('doc-text');
+  el.style.display = 'block';
+  el.innerHTML = `<button onclick="backToDocs()" style="margin-bottom:12px;padding:8px 16px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:16px;">← 戻る</button>\n\n${escapeHtml(text)}`;
+}
+
+function backToDocs() {
+  document.getElementById('doc-list').style.display = 'flex';
+  document.getElementById('doc-text').style.display = 'none';
+}
+</script>
+</body>
+</html>
