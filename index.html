@@ -471,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ---------- タブ切り替え ----------
 function switchTab(name) {
-  const names = ['chat', 'category', 'docs'];
+  const names = ['category', 'docs', 'chat'];
   document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.tab-content').forEach((c, i) =>
     c.classList.toggle('active', ['tab-chat','tab-category','tab-docs'][i] === 'tab-' + name));
